@@ -3,73 +3,80 @@ using UnityEngine.InputSystem;
 
 public class PlayerMovement : MonoBehaviour
 {
-    private PlayerActionControls playerActionControls;
+    public InputActionAsset inputActionMapping;
+    private InputAction moveAction, jumpAction;
     private Rigidbody2D rb;
-    [SerializeField] private float speed = 1, jumpForce = 1, groundRaycastLength = 10f;
+
+    [Header("Movimiento")]
+    [SerializeField] private float speed = 5f;
+    [SerializeField] private float jumpForce = 10f;
+
+    [Header("Detecci�n suelo")]
     [SerializeField] private Transform raycastTransf;
+    [SerializeField] private float groundCheckDistance = 0.1f;
+    [SerializeField] private LayerMask groundMask;
+
+    [Header("Empuje")]
+    [SerializeField] private float extraPushForce = 5f; 
+
+    private Vector2 moveInput;
+    private bool wantsToJump;
 
     void Awake()
     {
-        playerActionControls = new PlayerActionControls();
+        inputActionMapping.Enable();
         rb = GetComponent<Rigidbody2D>();
-    }
-
-    void Start()
-    {
-        
+        var map = inputActionMapping.FindActionMap("Player");
+        moveAction = map.FindAction("Move");
+        jumpAction = map.FindAction("Jump");
     }
 
     void Update()
     {
-        Vector2 moveInput = playerActionControls.Player.Move.ReadValue<Vector2>();
+        moveInput = moveAction.ReadValue<Vector2>();
 
-        if(moveInput != Vector2.zero && !TimeManager.instance.isRecording)
+        if (jumpAction.triggered)
         {
-            TimeManager.instance.isRecording = true;
-        }
-
-        Vector2 velocity = rb.linearVelocity;
-        velocity.x = moveInput.x * speed;
-        rb.linearVelocity = velocity;
-
-        bool isGrounded = CheckIsGrounded();
-
-        if (playerActionControls.Player.Jump.triggered && isGrounded)
-        {
-            Jump();
+            wantsToJump = true;
         }
     }
 
-    private void Jump()
+    void FixedUpdate()
     {
-        Vector2 velocity = rb.linearVelocity;
-        velocity.y = jumpForce;
-        rb.linearVelocity = velocity;
-    }
+        Vector2 vel = rb.linearVelocity;
+        vel.x = moveInput.x * speed;
+        rb.linearVelocity = vel;
 
-    private bool CheckIsGrounded()
-    {
-        bool isGrounded = false;
-        int layerMask = LayerMask.GetMask("Floor");
-        RaycastHit2D hit = Physics2D.Raycast(raycastTransf.position, Vector2.down, groundRaycastLength, layerMask, 0);
-        Debug.DrawRay(raycastTransf.position, Vector2.down.normalized * groundRaycastLength, Color.red);
-
-        if(hit.collider != null)
+        // Salto
+        if (wantsToJump && IsGrounded())
         {
-            isGrounded = hit.collider.CompareTag("Floor");
+            Vector2 v = rb.linearVelocity;
+            v.y = jumpForce;
+            rb.linearVelocity = v;
         }
-        
-        return isGrounded;
+
+        wantsToJump = false;
     }
 
-    private void OnEnable()
+    private bool IsGrounded()
     {
-        playerActionControls.Enable();
+        RaycastHit2D hit = Physics2D.Raycast(raycastTransf.position, Vector2.down, groundCheckDistance, groundMask);
+        Debug.DrawRay(raycastTransf.position, Vector2.down * groundCheckDistance, Color.red);
+        return hit.collider != null;
     }
 
-    private void OnDisable()
+    void OnCollisionStay2D(Collision2D collision)
     {
-        playerActionControls.Disable();
-    }
+        Rigidbody2D otherRb = collision.rigidbody;
+        if (otherRb != null && otherRb.bodyType == RigidbodyType2D.Dynamic && collision.gameObject.CompareTag("Pushable"))
+        {
+            Vector2 pushDir = (otherRb.position - rb.position).normalized;
 
+            if (Mathf.Abs(moveInput.x) > 0.01f || Mathf.Abs(moveInput.y) > 0.01f)
+            {
+                Vector2 applied = new Vector2(pushDir.x, pushDir.y) * extraPushForce;
+                otherRb.AddForce(applied, ForceMode2D.Force);
+            }
+        }
+    }
 }
