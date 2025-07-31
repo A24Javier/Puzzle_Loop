@@ -64,7 +64,7 @@ public class TimeManager : MonoBehaviour
             playerRecorder.Add(actualFrame);
         }
 
-        if(actualLoop >= 1)
+        if(actualLoop >= 1 && isRecording)
         {
             if(frame < lastLoopRecorder.Capacity)
             {
@@ -91,6 +91,7 @@ public class TimeManager : MonoBehaviour
         phantomIns.transform.position = spawnLevels[actualLevel];
         phantomRb = phantomIns.GetComponent<Rigidbody2D>();
 
+        lastLoopRecorder.Clear();
         lastLoopRecorder.AddRange(playerRecorder); // Copiamos el contenido de playerRecorder a lastLoopRecorder
         playerRecorder.Clear();
 
@@ -98,6 +99,7 @@ public class TimeManager : MonoBehaviour
         actualTime = timeLevels[actualLevel];
 
         actualLoop++;
+        Debug.Log("Restart Loop finalizado");
     }
 }
 
