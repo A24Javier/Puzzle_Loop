@@ -3,8 +3,6 @@ using UnityEngine.Events;
 
 public class PressurePlate : MonoBehaviour
 {
-    [SerializeField] private string[] activatingTags = new[] { "Player" };
-
     [Header("Eventos")]
     public UnityEvent onPressed;
     public UnityEvent onReleased;
@@ -12,17 +10,13 @@ public class PressurePlate : MonoBehaviour
     private int overlappingCount = 0;
     private bool isPressed = false;
 
-    private bool TagMatches(GameObject go)
-    {
-        foreach (var t in activatingTags)
-            if (go.CompareTag(t))
-                return true;
-        return false;
-    }
-
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!TagMatches(other.gameObject)) return;
+        if (!other.gameObject.CompareTag("Player") && !other.gameObject.CompareTag("Phantom"))
+        {
+            return;
+        }
+        
         overlappingCount++;
         if (!isPressed)
         {
@@ -33,7 +27,10 @@ public class PressurePlate : MonoBehaviour
 
     private void OnTriggerExit2D(Collider2D other)
     {
-        if (!TagMatches(other.gameObject)) return;
+        if (!other.gameObject.CompareTag("Player") && !other.gameObject.CompareTag("Phantom"))
+        {
+            return;
+        }
         overlappingCount = Mathf.Max(0, overlappingCount - 1);
         if (overlappingCount == 0 && isPressed)
         {

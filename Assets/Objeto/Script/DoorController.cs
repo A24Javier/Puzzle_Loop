@@ -13,7 +13,6 @@ public class DoorController : MonoBehaviour
 
     void Reset()
     {
-
         closedPosition = transform.localPosition;
         openPosition = closedPosition + Vector3.up * 2f;
     }

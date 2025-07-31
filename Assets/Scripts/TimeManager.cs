@@ -66,13 +66,12 @@ public class TimeManager : MonoBehaviour
 
         if(actualLoop >= 1 && isRecording)
         {
-            if(frame < lastLoopRecorder.Capacity)
+            if(frame < (lastLoopRecorder.Capacity - 1))
             {
                 FrameRecorder phantomFrame = new FrameRecorder(lastLoopRecorder[frame].position, lastLoopRecorder[frame].velocity);
                 phantomRb.position = phantomFrame.position;
                 phantomRb.linearVelocity = phantomFrame.velocity;
                 frame++;
-                Debug.Log(frame);
             }
         }
     }
@@ -99,7 +98,6 @@ public class TimeManager : MonoBehaviour
         actualTime = timeLevels[actualLevel];
 
         actualLoop++;
-        Debug.Log("Restart Loop finalizado");
     }
 }
 

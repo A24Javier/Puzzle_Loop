@@ -3,80 +3,78 @@ using UnityEngine.InputSystem;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public InputActionAsset inputActionMapping;
-    private InputAction moveAction, jumpAction;
+    private PlayerActionControls playerActionControls;
     private Rigidbody2D rb;
-
-    [Header("Movimiento")]
-    [SerializeField] private float speed = 5f;
-    [SerializeField] private float jumpForce = 10f;
-
-    [Header("Detecci�n suelo")]
+    [SerializeField] private float speed = 1, jumpForce = 1, groundRaycastLength = 10f;
     [SerializeField] private Transform raycastTransf;
-    [SerializeField] private float groundCheckDistance = 0.1f;
-    [SerializeField] private LayerMask groundMask;
-
-    [Header("Empuje")]
-    [SerializeField] private float extraPushForce = 5f; 
-
-    private Vector2 moveInput;
-    private bool wantsToJump;
+    private Animator animator;
 
     void Awake()
     {
-        inputActionMapping.Enable();
+        playerActionControls = new PlayerActionControls();
+        animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody2D>();
-        var map = inputActionMapping.FindActionMap("Player");
-        moveAction = map.FindAction("Move");
-        jumpAction = map.FindAction("Jump");
+    }
+
+    void Start()
+    {
+        
     }
 
     void Update()
     {
-        moveInput = moveAction.ReadValue<Vector2>();
+        Vector2 moveInput = playerActionControls.Player.Move.ReadValue<Vector2>();
 
-        if (jumpAction.triggered)
+        if(moveInput != Vector2.zero && !TimeManager.instance.isRecording)
         {
-            wantsToJump = true;
+            TimeManager.instance.isRecording = true;
+        }
+
+        animator.SetBool("isWalking", moveInput != Vector2.zero);
+
+        Vector2 velocity = rb.linearVelocity;
+        velocity.x = moveInput.x * speed;
+        rb.linearVelocity = velocity;
+
+        bool isGrounded = CheckIsGrounded();
+        animator.SetBool("isJumping", !isGrounded);
+
+        if (playerActionControls.Player.Jump.triggered && isGrounded)
+        {
+            Jump();
         }
     }
 
-    void FixedUpdate()
+    private void Jump()
     {
-        Vector2 vel = rb.linearVelocity;
-        vel.x = moveInput.x * speed;
-        rb.linearVelocity = vel;
+        Vector2 velocity = rb.linearVelocity;
+        velocity.y = jumpForce;
+        rb.linearVelocity = velocity;
+    }
 
-        // Salto
-        if (wantsToJump && IsGrounded())
+    private bool CheckIsGrounded()
+    {
+        bool isGrounded = false;
+        int layerMask = LayerMask.GetMask("Floor");
+        RaycastHit2D hit = Physics2D.Raycast(raycastTransf.position, Vector2.down, groundRaycastLength, layerMask, 0);
+        Debug.DrawRay(raycastTransf.position, Vector2.down.normalized * groundRaycastLength, Color.red);
+
+        if(hit.collider != null)
         {
-            Vector2 v = rb.linearVelocity;
-            v.y = jumpForce;
-            rb.linearVelocity = v;
+            isGrounded = hit.collider.CompareTag("Floor");
         }
-
-        wantsToJump = false;
+        
+        return isGrounded;
     }
 
-    private bool IsGrounded()
+    private void OnEnable()
     {
-        RaycastHit2D hit = Physics2D.Raycast(raycastTransf.position, Vector2.down, groundCheckDistance, groundMask);
-        Debug.DrawRay(raycastTransf.position, Vector2.down * groundCheckDistance, Color.red);
-        return hit.collider != null;
+        playerActionControls.Enable();
     }
 
-    void OnCollisionStay2D(Collision2D collision)
+    private void OnDisable()
     {
-        Rigidbody2D otherRb = collision.rigidbody;
-        if (otherRb != null && otherRb.bodyType == RigidbodyType2D.Dynamic && collision.gameObject.CompareTag("Pushable"))
-        {
-            Vector2 pushDir = (otherRb.position - rb.position).normalized;
-
-            if (Mathf.Abs(moveInput.x) > 0.01f || Mathf.Abs(moveInput.y) > 0.01f)
-            {
-                Vector2 applied = new Vector2(pushDir.x, pushDir.y) * extraPushForce;
-                otherRb.AddForce(applied, ForceMode2D.Force);
-            }
-        }
+        playerActionControls.Disable();
     }
+
 }
